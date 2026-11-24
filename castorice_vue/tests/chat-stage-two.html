@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>Chat stage two checks</title><style>body{background:#171425;color:#eee;font-family:system-ui;max-width:900px;margin:20px auto}header button{padding:8px;margin:5px}.save-warning{color:#ffcfaa}</style></head><body>
+<div id="app"></div>
+<script type="module">
+import { createApp, ref, provide } from 'vue/dist/vue.esm-bundler.js'
+import ChatArea from '../src/components/ChatArea.vue'
+import ChatInput from '../src/components/ChatInput.vue'
+import { useConversation } from '../src/composables/useConversation.js'
+createApp({
+  components: { ChatArea, ChatInput },
+  setup() {
+    provide('currentLang', ref('zh-CN'))
+    const count = ref(0)
+    const sample = '# 展示验证\n\n- 支持列表\n- 保留原布局\n\n| 功能 | 状态 |\n| --- | --- |\n| Markdown | 正常 |\n| 自动保存 | 正常 |\n\n> 这是引用内容。\n\n[文档链接](https://example.com)\n\n```javascript\nconst unique = values => [...new Set(values)];\nconsole.log(unique([1, 1, 2]));\n```'
+    const conversation = useConversation({ storageKey: 'castorice_stage_two_fixture_v1', settings: () => ({ stream: true }),
+      fetchImpl: async (url, init) => {
+        count.value++
+        let timer
+        const request = JSON.parse(init.body)
+        const text = request.messages.at(-1).content.includes('慢速') ? sample.repeat(4) : sample
+        return new Response(new ReadableStream({ start(controller) {
+          let position = 0
+          timer = setInterval(() => {
+            if (init.signal.aborted) { clearInterval(timer); controller.error(new DOMException('Aborted', 'AbortError')); return }
+            const content = text.slice(position, position += 16)
+            controller.enqueue(new TextEncoder().encode('data: ' + JSON.stringify({content}) + '\n\n'))
+            if (position >= text.length) { clearInterval(timer); controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n')); controller.close() }
+          }, 60)
+        }, cancel() { clearInterval(timer) } }), { headers: { 'Content-Type': 'text/event-stream' } })
+      } })
+    return { ...conversation, count }
+  },
+  template: `<header><button :disabled="isBusy" @click="send('Markdown 示例')">生成 Markdown 示例</button><button :disabled="isBusy" @click="send('慢速生成')">慢速生成</button><span>模拟请求：{{count}}</span></header><ChatInput v-model="draft" @send="send" @stop="stop" :disabled="isBusy" :can-stop="isBusy"/><p v-if="saveError" role="alert">{{saveError}}</p><ChatArea v-model:messages="messages" :streaming-msg="streamingMsg" :busy="isBusy" :can-restore="!!backup" @edit-message="editMessage" @regenerate="regenerate" @restore-previous="restorePrevious"/>`
+}).mount('#app')
+</script></body></html>

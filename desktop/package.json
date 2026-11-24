@@ -1,0 +1,34 @@
+{
+  "name": "castorice-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Castorice AI desktop preview",
+  "main": "main.cjs",
+  "scripts": { "start": "electron .", "pack": "electron-builder --win nsis --x64", "pack:portable": "electron-builder --win portable --x64" },
+  "devDependencies": { "electron": "^42.0.0", "electron-builder": "^26.0.0" },
+  "build": {
+    "appId": "local.castorice.ai",
+    "productName": "Castorice AI",
+    "electronDist": "node_modules/electron/dist",
+    "directories": { "output": "../desktop-release" },
+    "files": ["main.cjs", "static-server.cjs", "preload.cjs", "package.json", "assets/icon.ico", "assets/icon.png"],
+    "extraResources": [
+      { "from": "../castorice_vue/dist", "to": "web" },
+      { "from": "../desktop-build/backend", "to": "backend" }
+    ],
+    "win": { "target": "nsis", "icon": "assets/icon.ico", "signExecutable": false },
+    "nsis": {
+      "artifactName": "Castorice-AI-${version}-Setup.exe",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Castorice AI",
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false,
+      "installerLanguages": ["zh_CN", "en_US"]
+    },
+    "portable": { "artifactName": "Castorice-AI-${version}-preview.exe" }
+  }
+}

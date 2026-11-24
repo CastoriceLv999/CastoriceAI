@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>Chat interaction checks</title><style>body{background:#171425;color:#eee;font-family:system-ui;max-width:900px;margin:20px auto}button{padding:8px;margin:5px}#app>header{margin-bottom:10px}</style></head><body>
+<div id="app"></div>
+<script type="module">
+import { createApp, ref, provide } from 'vue/dist/vue.esm-bundler.js'
+import ChatArea from '../src/components/ChatArea.vue'
+import ChatInput from '../src/components/ChatInput.vue'
+createApp({
+  components: { ChatArea, ChatInput },
+  setup() {
+    provide('currentLang', ref('zh-CN'))
+    const sample = 'const list = [];\nfunction run() { return {}; }\nrun();'
+    const messages = ref([{ role: 'user', content: '测试消息顺序与代码复制' }, { role: 'assistant', content: '```javascript\n' + sample + '\n```\n' + Array.from({length: 30}, (_, i) => `历史段落 ${i + 1}`).join('\n\n') }])
+    const streaming = ref(null)
+    const status = ref('ready')
+    const lastInput = ref('')
+    let timer
+    function start() {
+      clearInterval(timer)
+      streaming.value = { role: 'assistant', content: '' }
+      let index = 0
+      timer = setInterval(() => {
+        streaming.value.content += `新增段落 ${++index}\n\n`
+        if (index === 50) { messages.value.push({...streaming.value}); streaming.value = null; clearInterval(timer) }
+      }, 200)
+    }
+    async function checkClipboard() {
+      try { status.value = (await navigator.clipboard.readText()) === sample ? 'clipboard matches exactly' : 'clipboard mismatch' } catch { status.value = 'clipboard read unavailable' }
+    }
+    return { messages, streaming, start, status, checkClipboard, lastInput }
+  },
+  template: `<header><button @click="start">开始模拟流式</button><button @click="checkClipboard">校验代码剪贴板</button><span role="status">{{status}}</span></header><ChatArea v-model:messages="messages" :streaming-msg="streaming" :busy="!!streaming"/><ChatInput @send="lastInput=$event"/><output>已发送：{{lastInput}}</output>`
+}).mount('#app')
+</script></body></html>
+

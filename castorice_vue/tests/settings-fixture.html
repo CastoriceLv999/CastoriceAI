@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><title>Settings parameter checks — simulated APIs only</title></head><body>
+<div id="app"></div>
+<aside style="position:relative;z-index:999;background:#171425;color:#eee;padding:16px"><h2>侧边栏参数检查：所有 API 均模拟，不调用模型</h2><pre id="requests" style="white-space:pre-wrap">尚无请求</pre></aside>
+<script type="module">
+import { createApp } from 'vue'
+import App from '../src/App.vue'
+import '../src/style.css'
+const originalFetch = globalThis.fetch.bind(globalThis)
+const requests = []
+globalThis.fetch = async (url, init = {}) => {
+  if (!String(url).startsWith('/api/')) return originalFetch(url, init)
+  const payload = init.body ? JSON.parse(init.body) : null
+  requests.push({ url, payload })
+  document.querySelector('#requests').textContent = JSON.stringify(requests, null, 2)
+  if (url === '/api/generate/image') return Response.json({ success: true, urls: ['/images/castorice_logo1.png'], count: 1 })
+  if (url === '/api/generate/video') return Response.json({ task_id: 'simulated-only', success: true })
+  if (url === '/api/tasks/simulated-only') return Response.json({ status: 'SUCCEEDED', result: { videos: ['/media/Castorice.mp4'] } })
+  if (url === '/api/chat') return Response.json({ content: '参数验证通过', reasoning: '' })
+  if (url === '/api/chat/stream' || url === '/api/agent/stream') return new Response('data: {"content":"参数验证通过"}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } })
+  throw new Error('Unexpected API blocked by settings fixture')
+}
+createApp(App).mount('#app')
+</script></body></html>
